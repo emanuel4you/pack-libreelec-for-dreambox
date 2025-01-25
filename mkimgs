@@ -4,17 +4,169 @@
 # Copyright (C) 2025 Emanuel Strobel
 # bypassing dreambox direct SDCARD boot options to LibreElec *box.img
 
-sudo echo || exit 1
+# host bash
+BASH=/bin/bash
 
-#./get-local.sh
-./get-nightly.sh
+# build version
+LE_VERSION="13.0"
+YEAR="2025"
 
-./dreamboot_one.sh
-./dreamboot_two.sh
-./dreamboot_multi_one.sh
-./dreamboot_multi_two.sh
-./dreamboot_gpt_one.sh
-./dreamboot_gpt_two.sh
-./dreambox_play.sh
+# LibreElec build root
+LE_BUILD=${HOME}/LibreELEC.tv
+
+
+URL="https://test.libreelec.tv/${LE_VERSION}/Amlogic/box/"
+LE_TARGETS=${LE_BUILD}/target/
+TARGET=`ls ${LE_TARGETS} | grep box.img.gz$ | sed '/.sha256/d' | awk '{ f=$NF }; END{ print f }'`
+
+function get-nightly()
+{
+    CURRENT_NIGHTLY=`wget -O - ${URL} | grep LibreELEC-AMLGX.aarch64-${LE_VERSION}-nightly-${YEAR} | sed -e 's/.*"><a href="//g' -e 's/">.*//' | awk '{ f=$NF }; END{ print f }'`
+    NIGHTLY=${URL}${CURRENT_NIGHTLY}
+
+    if [ ${CURRENT_NIGHTLY} != "" ] && [ -f ${CURRENT_NIGHTLY} ]; then
+        echo "[$(basename ${0})] ${CURRENT_NIGHTLY} up to date!"
+        return 0
+    else
+        echo "[$(basename ${0})] downloading ${NIGHTLY} ..."
+        wget ${NIGHTLY} && return 0
+    fi
+
+    echo "[$(basename ${0})] can not get nightly build!"
+    exit -1
+}
+
+function get-locale()
+{
+    if [ ${TARGET} != "" ] && [ -f ${TARGET} ]; then
+        echo "[$(basename ${0})] ${TARGET} up to date!"
+        return 0
+    else
+        echo "[$(basename ${0})] copying ${LE_TARGETS}${TARGET} ..."
+        cp ${LE_TARGETS}${TARGET} . && return 0
+    fi
+
+    echo "[$(basename ${0})] can not find local build!"
+    exit -1
+}
+
+### MAIN PART
+
+for i in $@
+do
+     if [ "$i" == "all" ] || [ "$i" == "nightly" ] || [ "$i" == "" ] ; then
+        # build all nightly images
+        get-nightly
+
+        ${BASH} pack-image one
+        ${BASH} pack-image one multi
+        ${BASH} pack-image one gpt
+
+        ${BASH} pack-image two
+        ${BASH} pack-image two multi
+        ${BASH} pack-image two gpt
+
+        ${BASH} pack-image play
+        exit 0
+     fi
+
+     if [ "$i" == "all-local" ]; then
+        # build all nightly images
+        get-local
+
+        ${BASH} pack-image one
+        ${BASH} pack-image one multi
+        ${BASH} pack-image one gpt
+
+        ${BASH} pack-image two
+        ${BASH} pack-image two multi
+        ${BASH} pack-image two gpt
+
+        ${BASH} pack-image play
+        exit 0
+     fi
+done
+
+# check if build in single tasks
+
+for i in $@
+do
+    case "$i" in
+        "one" | "two" | "play")
+            get-nightly
+            ${BASH} pack-image $i
+        ;;
+        "one-gpt")
+            get-nightly
+            ${BASH} pack-image one gpt
+        ;;
+        "two-gpt")
+            get-nightly
+            ${BASH} pack-image two gpt
+        ;;
+        "one-multi")
+            get-nightly
+            ${BASH} pack-image one multi
+        ;;
+        "two-multi")
+            get-nightly
+            ${BASH} pack-image two multi
+        ;;
+        "one-local" | "two-local" | "play-local")
+            get-local
+            ${BASH} pack-image $i
+        ;;
+        "one-gpt-local")
+            get-local
+            ${BASH} pack-image one gpt
+        ;;
+        "two-gpt-local")
+            get-local
+            ${BASH} pack-image two gpt
+        ;;
+        "one-multi-local")
+            get-local
+            ${BASH} pack-image one multi
+        ;;
+        "two-multi-local")
+            get-local
+            ${BASH} pack-image two multi
+        ;;
+        help|-help|-h|--help)
+            echo "Usage: $(basename $0) [targets]"
+            echo
+            echo -e "\ttargets: nightly, all, all-local, one, two, play, one-gpt, two-gpt,"
+            echo -e "\t\t one-multi, two-multi, one-local, two-local, play-local, one-gpt-local,"
+            echo -e "\t\tt wo-gpt-local, one-multi-local, two-multi-local"
+            echo
+            echo -e "\texamples:"
+            echo -e "\t »$(basename $0) nightly« - packs LibreElec nightly Images for dreambox boot"
+            echo -e "\t »export LE_BUILD=/path-to-you-LE-root; ./$(basename $0) all-local« - packs"
+            echo -e "\t\t LibreElec Images from local build for dreambox boot"
+            echo
+            echo -e "\t »$(basename $0) clean« - cleans packing directory"
+            echo
+            exit 0
+        ;;
+        clean|-clean|-c|--clean)
+            echo
+            echo "cleaning directory..."
+            rm -rf targets *.gz
+            echo
+            exit 0
+        ;;
+        *)
+            echo "$(basename $0): error missing or wrong parameter"
+            echo "$(basename $0): »./$(basename $0) --help«"
+            exit 1
+        ;;
+    esac
+done
+
+if [ "$1" == "" ];
+then
+     echo "$(basename $0): error missing or wrong parameter"
+     echo "$(basename $0): »./$(basename $0) --help«"
+fi
 
 exit 0
