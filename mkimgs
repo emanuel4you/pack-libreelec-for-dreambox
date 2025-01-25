@@ -1,0 +1,20 @@
+#!/bin/bash
+
+# SPDX-License-Identifier: GPL-2.0
+# Copyright (C) 2025 Emanuel Strobel
+# bypassing dreambox direct SDCARD boot options to LibreElec *box.img
+
+sudo echo || exit 1
+
+#./get-local.sh
+./get-nightly.sh
+
+./dreamboot_one.sh
+./dreamboot_two.sh
+./dreamboot_multi_one.sh
+./dreamboot_multi_two.sh
+./dreamboot_gpt_one.sh
+./dreamboot_gpt_two.sh
+./dreambox_play.sh
+
+exit 0

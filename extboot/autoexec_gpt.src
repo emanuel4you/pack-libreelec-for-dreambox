@@ -1,0 +1,9 @@
+if test ${autoexec_reboot_mode} = 1; then
+	echo "[autoexec.img] fp_poweroff"
+	setenv autoexec_reboot_mode 0
+	saveenv
+	dm_fp pwroff
+else
+	echo "[autoexec.img] show dm_bootmenu..."
+	dm_bootmenu show
+fi

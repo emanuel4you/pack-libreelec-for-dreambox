@@ -1,0 +1,14 @@
+[Unit]
+Description=autoexec Reboot Service
+DefaultDependencies=no
+Before=shutdown.target reboot.target
+Conflicts=reboot.target
+
+[Service]
+ExecStart=/bin/bash \
+    /storage/bin/setenv autoexec_reboot_mode 1
+Type=oneshot
+RemainAfterExit=yes
+
+[Install]
+WantedBy=shutdown.target

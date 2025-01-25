@@ -1,0 +1,12 @@
+#!/bin/sh
+PATH=/storage/bin:${PATH}
+CONFIG=/storage/.config/fw_env.config
+
+if [ -e /dev/env ]; 
+then
+	fw_setenv -c ${CONFIG} $1 $2
+else
+	echo "found gpt formated flash"
+	sed -i 's/env/mmcblk1p2/g' ${CONFIG}
+	fw_setenv -c ${CONFIG} $1 $2
+fi

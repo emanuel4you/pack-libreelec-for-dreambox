@@ -1,0 +1,4 @@
+echo "[aml_autoscript.scr] try starting u-boot.ext from sd..."
+if fatload mmc 0:1 ${dtb_mem_addr} u-boot.ext; then go ${dtb_mem_addr}; fi;
+echo "[aml_autoscript.scr] ERROR - no mainline u-boot.ext found!"
+
