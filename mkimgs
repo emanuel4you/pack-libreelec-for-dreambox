@@ -36,7 +36,7 @@ function get-nightly()
     exit -1
 }
 
-function get-locale()
+function get-local()
 {
     if [ ${TARGET} != "" ] && [ -f ${TARGET} ]; then
         echo "[$(basename ${0})] ${TARGET} up to date!"
