@@ -3,6 +3,11 @@
 # SPDX-License-Identifier: GPL-2.0
 # Copyright (C) 2025 Emanuel Strobel
 # bypassing dreambox direct SDCARD boot options to LibreElec *box.img
+ID=`whoami`
+SUDO=""
+if [ "${ID}" != "root" ]; then
+    SUDO="sudo"
+fi
 
 MODEL=${1}
 BOX="dreambox-${MODEL}"
@@ -11,7 +16,7 @@ BOARD="g12b"
 BOOTLOADER="uboot_dream${MODEL}.bin"
 BOOTLOADER_EXT="u-boot_s922x.bin"
 BOOTSCR="autoexec.img"
-CUSTOM_DTB="echo no custom device-tree"
+CUSTOM_DTB=""
 
 # optional or ""
 DEBUG="no_console_suspend debugging"
@@ -21,7 +26,10 @@ if [ "${MODEL}" == "play" ]; then
     BOOT_TYPE=""
     BOOTLOADER_EXT="u-boot-s905x2.bin"
     BOOTSCR="aml_autoscript.scr"
-    #CUSTOM_DTB="sudo cp extboot/custom_dtb/*${BOARD}-${BOX}.dtb LE_BOOT/amlogic"
+
+    if [ "${SOURCE}" == "online" ]; then
+        CUSTOM_DTB="${SUDO} cp extboot/custom_dtb/meson-${BOARD}-${BOX}.dtb LE_BOOT/amlogic"
+    fi
 fi
 
 DTB="meson-${BOARD}-${BOX}.dtb"
@@ -39,82 +47,98 @@ if [ "${BOOT_TYPE}" == "multi" ]; then
     IMG="${BOX}_multiboot.img"
 fi
 
-sudo echo || exit 1
+${SUDO} echo || exit 1
 
-echo "[$(basename ${0})] packing ${IMG}..."
+echo "[$(basename ${0})] packing image for ${BOX}..."
 
 pigz -fdk LibreELEC-AMLGX.a*-box.img.gz || exit 1
 
 mkdir LE_BOOT
 
-START=`sudo fdisk -l LibreELEC-AMLGX.a*-box.img | grep .img1 | awk -e '{ print $3 }'`
+START=`${SUDO} fdisk -l LibreELEC-AMLGX.a*-box.img | grep .img1 | awk -e '{ print $3 }'`
 OFFSET=$(expr 512 '*' $START)
 LOOPDEV=$(losetup -f)
 
-sudo losetup -o $OFFSET $LOOPDEV LibreELEC-AMLGX.a*-box.img
-sudo mount -rw $LOOPDEV LE_BOOT
+${SUDO} losetup -o $OFFSET $LOOPDEV LibreELEC-AMLGX.a*-box.img
+${SUDO} mount -rw $LOOPDEV LE_BOOT
 
 if [ "${MODEL}" != "play" ] && [ "${BOOT_TYPE}" != "multi" ]; then
-    sudo dosfslabel $LOOPDEV "DREAMBOOT"
+    ${SUDO} dosfslabel $LOOPDEV "DREAMBOOT"
 fi
 
-sudo cp -r extboot/${BOOTSCR} LE_BOOT/${BOOTSCR_NAME}
-sudo cp -r extboot/${BOOTLOADER_EXT} LE_BOOT/u-boot.ext
-$(CUSTOM_DTB)
+${SUDO} cp -r extboot/${BOOTSCR} LE_BOOT/${BOOTSCR_NAME}
+${SUDO} cp -r extboot/${BOOTLOADER_EXT} LE_BOOT/u-boot.ext
 
-sudo sed -i "s!@@DTB_NAME@@!$DTB!" LE_BOOT/uEnv.ini
+if [ "${CUSTOM_DTB}" != "" ]; then
+    echo "[$(basename ${0})] add custom device-tree..."
+    ${CUSTOM_DTB}
+fi
+
+${SUDO} sed -i "s!@@DTB_NAME@@!$DTB!" LE_BOOT/uEnv.ini
 
 if [ "${DEBUG}" != "" ]; then
     BOOT_ARGS=`cat LE_BOOT/uEnv.ini | grep bootargs | sed -e 's/ quiet//'`
     BOOT_ARGS="$BOOT_ARGS ${DEBUG}"
-    sudo sed -i "s!bootargs.*!$BOOT_ARGS!" LE_BOOT/uEnv.ini
+    ${SUDO} sed -i "s!bootargs.*!$BOOT_ARGS!" LE_BOOT/uEnv.ini
 fi
 
 echo "[$(basename ${0})] uEnv.ini:"
+echo "------------------------------------------------------------------------------------------"
 cat  LE_BOOT/uEnv.ini
+echo "------------------------------------------------------------------------------------------"
 echo
 echo "[$(basename ${0})] boot partition:"
+echo "------------------------------------------------------------------------------------------"
 ls LE_BOOT
+echo "------------------------------------------------------------------------------------------"
+echo
 echo "[$(basename ${0})] boot partition /amlogic:"
+echo "------------------------------------------------------------------------------------------"
 ls LE_BOOT/amlogic
+echo "------------------------------------------------------------------------------------------"
 echo
 
 sync
-sudo umount LE_BOOT
-sudo losetup -d $LOOPDEV
-sudo rmdir LE_BOOT
+${SUDO} losetup -d $LOOPDEV
+${SUDO} umount LE_BOOT
+${SUDO} rmdir LE_BOOT
 
 if [ "${MODEL}" != "play" ] && [ "${BOOT_TYPE}" != "multi" ]; then
     mkdir LE_ROOT
-    START=`sudo fdisk -l LibreELEC-AMLGX.a*-box.img | grep .img2 | awk -e '{ print $2 }'`
+    START=`${SUDO} fdisk -l LibreELEC-AMLGX.a*-box.img | grep .img2 | awk -e '{ print $2 }'`
     OFFSET=$(expr 512 '*' $START)
     LOOPDEV=$(losetup -f)
 
-    sudo losetup -o $OFFSET $LOOPDEV LibreELEC-AMLGX.a*-box.img
-    sudo mount -rw $LOOPDEV LE_ROOT
+    ${SUDO} losetup -o $OFFSET $LOOPDEV LibreELEC-AMLGX.a*-box.img
+    ${SUDO} mount -rw $LOOPDEV LE_ROOT
 
-    sudo cp -r storage/bin LE_ROOT
-    sudo cp -r storage/.config LE_ROOT
-    sudo cp -r storage/.profile LE_ROOT
+    ${SUDO} cp -r storage/bin LE_ROOT
+    ${SUDO} cp -r storage/.config LE_ROOT
+    ${SUDO} cp -r storage/.profile LE_ROOT
 
     echo "[$(basename ${0})] storage partition:"
+    echo "------------------------------------------------------------------------------------------"
     ls -a LE_ROOT/
+    echo "------------------------------------------------------------------------------------------"
     echo
 
     sync
-    sudo umount -l LE_ROOT
-    sleep 1
-    sudo losetup -d $LOOPDEV
-    sleep 1
-    sudo rmdir LE_ROOT
+    ${SUDO} losetup -d $LOOPDEV
+    ${SUDO} umount LE_ROOT
+    ${SUDO} rmdir LE_ROOT
 fi
 
 NAME=`ls LibreELEC-AMLGX.a*-box.img | sed -e 's/box.img//'`${IMG}
 mv `ls LibreELEC-AMLGX.a*-box.img` ${NAME}
 
 if [ "${BOOTLOADER}" != "" ]; then
+    echo "[$(basename ${0})] writing u-boot..."
+    echo "------------------------------------------------------------------------------------------"
     dd if=extboot/${BOOTLOADER} of="${NAME}" conv=fsync,notrunc bs=1 count=440
     dd if=extboot/${BOOTLOADER} of="${NAME}" conv=fsync,notrunc bs=512 skip=1 seek=1
+
+    echo "------------------------------------------------------------------------------------------"
+    echo
 fi
 
 pigz -9 ${NAME}

@@ -14,13 +14,21 @@ YEAR="2025"
 # LibreElec build root
 LE_BUILD=${HOME}/LibreELEC.tv
 
-
 URL="https://test.libreelec.tv/${LE_VERSION}/Amlogic/box/"
 LE_TARGETS=${LE_BUILD}/target/
 TARGET=`ls ${LE_TARGETS} | grep box.img.gz$ | sed '/.sha256/d' | awk '{ f=$NF }; END{ print f }'`
 
+function cleanup()
+{
+    echo "[$(basename ${0})] cleaning root directory..."
+    rm *.img *.gz 2>/dev/null
+}
+
 function get-nightly()
 {
+    export SOURCE="online"
+    cleanup
+
     CURRENT_NIGHTLY=`wget -O - ${URL} | grep LibreELEC-AMLGX.aarch64-${LE_VERSION}-nightly-${YEAR} | sed -e 's/.*"><a href="//g' -e 's/">.*//' | awk '{ f=$NF }; END{ print f }'`
     NIGHTLY=${URL}${CURRENT_NIGHTLY}
 
@@ -32,21 +40,19 @@ function get-nightly()
         wget ${NIGHTLY} && return 0
     fi
 
-    echo "[$(basename ${0})] can not get nightly build!"
+    echo "[$(basename ${0})] Error can not get nightly build!"
     exit -1
 }
 
 function get-local()
 {
-    if [ ${TARGET} != "" ] && [ -f ${TARGET} ]; then
-        echo "[$(basename ${0})] ${TARGET} up to date!"
-        return 0
-    else
-        echo "[$(basename ${0})] copying ${LE_TARGETS}${TARGET} ..."
-        cp ${LE_TARGETS}${TARGET} . && return 0
-    fi
+    export SOURCE="local"
+    cleanup
 
-    echo "[$(basename ${0})] can not find local build!"
+    echo "[$(basename ${0})] copying ${LE_TARGETS}${TARGET} ."
+    cp ${LE_TARGETS}${TARGET} . && return 0
+
+    echo "[$(basename ${0})] Error can not find local build!"
     exit -1
 }
 
@@ -71,7 +77,7 @@ do
      fi
 
      if [ "$i" == "all-local" ]; then
-        # build all nightly images
+        # build all local images
         get-local
 
         ${BASH} pack-image one
@@ -112,9 +118,17 @@ do
             get-nightly
             ${BASH} pack-image two multi
         ;;
-        "one-local" | "two-local" | "play-local")
+        "one-local" )
             get-local
-            ${BASH} pack-image $i
+            ${BASH} pack-image one
+        ;;
+        "two-local" )
+            get-local
+            ${BASH} pack-image two
+        ;;
+        "play-local" )
+            get-local
+            ${BASH} pack-image play
         ;;
         "one-gpt-local")
             get-local
@@ -149,14 +163,13 @@ do
             exit 0
         ;;
         clean|-clean|-c|--clean)
-            echo
             echo "cleaning directory..."
-            rm -rf targets *.gz
+            rm -rf targets *.gz 2>/dev/null
             echo
             exit 0
         ;;
         *)
-            echo "$(basename $0): error missing or wrong parameter"
+            echo "$(basename $0): Error missing or wrong parameter"
             echo "$(basename $0): »./$(basename $0) --help«"
             exit 1
         ;;
@@ -165,7 +178,7 @@ done
 
 if [ "$1" == "" ];
 then
-     echo "$(basename $0): error missing or wrong parameter"
+     echo "$(basename $0): Error missing or wrong parameter"
      echo "$(basename $0): »./$(basename $0) --help«"
 fi
 
