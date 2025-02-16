@@ -151,7 +151,7 @@ do
             echo
             echo -e "\ttargets: nightly, all, all-local, one, two, play, one-gpt, two-gpt,"
             echo -e "\t\t one-multi, two-multi, one-local, two-local, play-local, one-gpt-local,"
-            echo -e "\t\tt wo-gpt-local, one-multi-local, two-multi-local"
+            echo -e "\t\t two-gpt-local, one-multi-local, two-multi-local"
             echo
             echo -e "\texamples:"
             echo -e "\t »$(basename $0) nightly« - packs LibreElec nightly Images for dreambox boot"
