@@ -53,7 +53,8 @@ echo "[$(basename ${0})] packing image for ${BOX}..."
 
 pigz -fdk LibreELEC-AMLGX.a*-box.img.gz || exit 1
 
-mkdir LE_BOOT
+mkdir LE_BOOT &>/dev/null
+mkdir targets &>/dev/null
 
 START=`${SUDO} fdisk -l LibreELEC-AMLGX.a*-box.img | grep .img1 | awk -e '{ print $3 }'`
 OFFSET=$(expr 512 '*' $START)
@@ -104,28 +105,36 @@ ${SUDO} umount LE_BOOT
 ${SUDO} rmdir LE_BOOT
 
 if [ "${MODEL}" != "play" ] && [ "${BOOT_TYPE}" != "multi" ]; then
-    mkdir LE_ROOT
-    START=`${SUDO} fdisk -l LibreELEC-AMLGX.a*-box.img | grep .img2 | awk -e '{ print $2 }'`
-    OFFSET=$(expr 512 '*' $START)
-    LOOPDEV=$(losetup -f)
 
-    ${SUDO} losetup -o $OFFSET $LOOPDEV LibreELEC-AMLGX.a*-box.img
-    ${SUDO} mount -rw $LOOPDEV LE_ROOT
+if [ ! -f "targets/dreambox-reboot-fix.zip" ]; then
+    zip -r targets/dreambox-reboot-fix.zip storage
+    sha256sum targets/dreambox-reboot-fix.zip > targets/dreambox-reboot-fix.zip.sha256
+fi
 
-    ${SUDO} cp -r storage/bin LE_ROOT
-    ${SUDO} cp -r storage/.config LE_ROOT
-    ${SUDO} cp -r storage/.profile LE_ROOT
+#    mkdir LE_ROOT
+#    START=`${SUDO} fdisk -l LibreELEC-AMLGX.a*-box.img | grep .img2 | awk -e '{ print $2 }'`
+#    OFFSET=$(expr 512 '*' $START)
+#    LOOPDEV=$(losetup -f)
 
-    echo "[$(basename ${0})] storage partition:"
-    echo "------------------------------------------------------------------------------------------"
-    ls -a LE_ROOT/
-    echo "------------------------------------------------------------------------------------------"
-    echo
+#    ${SUDO} losetup -o $OFFSET $LOOPDEV LibreELEC-AMLGX.a*-box.img
+#    ${SUDO} mount -rw $LOOPDEV LE_ROOT
 
-    sync
-    ${SUDO} losetup -d $LOOPDEV
-    ${SUDO} umount LE_ROOT
-    ${SUDO} rmdir LE_ROOT
+#    ${SUDO} cp -r storage/bin LE_ROOT
+#    ${SUDO} cp -r storage/.config LE_ROOT
+#    ${SUDO} cp -r storage/.profile LE_ROOT
+
+
+
+#    echo "[$(basename ${0})] storage partition:"
+#    echo "------------------------------------------------------------------------------------------"
+#    ls -a LE_ROOT/
+#    echo "------------------------------------------------------------------------------------------"
+#    echo
+
+#    sync
+#    ${SUDO} losetup -d $LOOPDEV
+#    ${SUDO} umount LE_ROOT
+#    ${SUDO} rmdir LE_ROOT
 fi
 
 NAME=`ls LibreELEC-AMLGX.a*-box.img | sed -e 's/box.img//'`${IMG}
@@ -144,7 +153,6 @@ fi
 pigz -9 ${NAME}
 sha256sum ${NAME}.gz > ${NAME}.gz.sha256
 
-mkdir targets &>/dev/null
 mv ${NAME}.gz targets/${NAME}.gz
 mv ${NAME}.gz.sha256 targets/${NAME}.gz.sha256
 
